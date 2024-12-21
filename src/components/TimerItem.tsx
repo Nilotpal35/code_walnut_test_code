@@ -16,32 +16,37 @@ interface TimerItemProps {
 export const TimerItem: React.FC<TimerItemProps> = ({ timer }) => {
   const { toggleTimer, deleteTimer, updateTimer, restartTimer } = useTimerStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const intervalRef = useRef<number | null>(null);
+  // const intervalRef = useRef<number | null>(null);
   const timerAudio = TimerAudio.getInstance();
   const hasEndedRef = useRef(false);
 
+
   useEffect(() => {
-    if (timer.isRunning) {
-      intervalRef.current = window.setInterval(() => {
-        updateTimer(timer.id);
-        
-        if (timer.remainingTime <= 1 && !hasEndedRef.current) {
-          hasEndedRef.current = true;
-          timerAudio.play().catch(console.error);
-          
-          toast.success(`Timer "${timer.title}" has ended!`, {
-            duration: 5000,
-            action: {
-              label: 'Dismiss',
-              onClick: timerAudio.stop,
-            },
-          });
-        }
-      }, 1000);
+    // if (timer.isRunning) {
+    //   console.log('timer.id', timer.id);
+    //   intervalRef.current = window.setInterval(() => {
+    //     console.log('TIMER----', timer.id);
+    //     updateTimer(timer.id);
+    
+    // moved the entire logic of timer update usind timer id in redux
+    // reason : earlier logic creating interval for a specific timer only
+    const interval = setInterval(() => {updateTimer()}, 1000);
+    if (timer.remainingTime === 0 && timer.isRunning) {
+      hasEndedRef.current = true;
+      timerAudio.play().catch(console.error);
+      
+      toast.success(`Timer "${timer.title}" has ended!`, {
+        duration: 5000,
+        action: {
+          label: 'Dismiss',
+          onClick: timerAudio.stop,
+        },
+      });
     }
 
-    return () => clearInterval(intervalRef.current!);
-  }, [timer.isRunning, timer.id, timer.remainingTime, timer.title, timerAudio, updateTimer]);
+
+    return () => clearInterval(interval);
+  }, [timer.remainingTime, timer.isRunning, timer.title, timerAudio, updateTimer]);
 
   const handleRestart = () => {
     hasEndedRef.current = false;
