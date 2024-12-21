@@ -1,19 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Clock } from 'lucide-react';
 import { useTimerStore } from '../store/useTimerStore';
 import { validateTimerForm } from '../utils/validation';
+import { Timer } from '../types/timer';
 
-interface AddTimerModalProps {
+interface AddEditTimerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  formAction: string;
+  timer?: Timer;
 }
 
-export const AddTimerModal: React.FC<AddTimerModalProps> = ({ isOpen, onClose }) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [hours, setHours] = useState(0);
-  const [minutes, setMinutes] = useState(0);
-  const [seconds, setSeconds] = useState(0);
+export const AddEditTimerModal: React.FC<AddEditTimerModalProps> = ({ isOpen, onClose, formAction, timer=undefined }) => {
+  const [title, setTitle] = useState(timer?.title || '');
+  const [description, setDescription] = useState(timer?.description || '');
+  const [hours, setHours] = useState(timer?.duration ? Math.floor(timer.duration / 3600) : 0);
+  const [minutes, setMinutes] = useState(timer?.duration ? Math.floor((timer.duration % 3600) / 60) : 0);
+  const [seconds, setSeconds] = useState(timer?.duration ? timer.duration % 60 : 0);
   const [touched, setTouched] = useState({
     title: false,
     hours: false,
@@ -21,9 +24,26 @@ export const AddTimerModal: React.FC<AddTimerModalProps> = ({ isOpen, onClose })
     seconds: false,
   });
   
-  const { addTimer } = useTimerStore();
+  const { addTimer, editTimer } = useTimerStore();
+
+  useEffect(() => {
+    if (isOpen && timer!== undefined) {
+    setTitle(timer?.title);
+    setDescription(timer?.description);
+    setHours(Math.floor(timer?.duration / 3600));
+    setMinutes(Math.floor((timer?.duration % 3600) / 60));
+    setSeconds(timer?.duration % 60);
+    setTouched({
+        title: false,
+        hours: false,
+        minutes: false,
+        seconds: false,
+    });
+    }
+  }, [isOpen, timer]);
 
   if (!isOpen) return null;
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,26 +54,34 @@ export const AddTimerModal: React.FC<AddTimerModalProps> = ({ isOpen, onClose })
 
     const totalSeconds = hours * 3600 + minutes * 60 + seconds;
     
-    addTimer({
+    if(formAction ==='ADD') {addTimer({
       title: title.trim(),
       description: description.trim(),
       duration: totalSeconds,
       remainingTime: totalSeconds,
       isRunning: false,
-    });
+    })} else if(formAction==='EDIT' && timer !== undefined) {
+        editTimer(timer.id, {
+        title: title.trim(),
+        description: description.trim(),
+        duration: totalSeconds,
+      })
+    }
 
     onClose();
-    setTitle('');
-    setDescription('');
-    setHours(0);
-    setMinutes(0);
-    setSeconds(0);
-    setTouched({
-      title: false,
-      hours: false,
-      minutes: false,
-      seconds: false,
-    });
+    if(formAction === 'ADD'){
+        setTitle('');
+        setDescription('');
+        setHours(0);
+        setMinutes(0);
+        setSeconds(0);
+        setTouched({
+        title: false,
+        hours: false,
+        minutes: false,
+        seconds: false,
+        });
+    }
   };
 
   const handleClose = () => {
@@ -75,7 +103,7 @@ export const AddTimerModal: React.FC<AddTimerModalProps> = ({ isOpen, onClose })
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-semibold">Add New Timer</h2>
+            <h2 className="text-xl font-semibold">{formAction === 'ADD' ? 'Add New Timer' : formAction === 'EDIT' ?  'Edit Timer' : ''}</h2>
           </div>
           <button 
             onClick={handleClose}
@@ -96,11 +124,15 @@ export const AddTimerModal: React.FC<AddTimerModalProps> = ({ isOpen, onClose })
               onChange={(e) => setTitle(e.target.value)}
               onBlur={() => setTouched({ ...touched, title: true })}
               maxLength={50}
-              className={` ${
+              className={formAction === 'ADD' ? ` ${
                 touched.title && !isTitleValid
                   ? 'border-red-500'
                   : 'border-gray-300'
-              }`}
+              }` : formAction === 'EDIT' ? `w-full px-3 py-2 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                touched.title && !isTitleValid
+                  ? 'border-red-500'
+                  : 'border-gray-300'
+              }` : ''}
               placeholder="Enter timer title"
             />
             {touched.title && !isTitleValid && (
@@ -121,7 +153,7 @@ export const AddTimerModal: React.FC<AddTimerModalProps> = ({ isOpen, onClose })
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className=""
+              className={formAction === 'EDIT' ? "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" :""}
               placeholder="Enter timer description (optional)"
             />
           </div>
@@ -175,7 +207,7 @@ export const AddTimerModal: React.FC<AddTimerModalProps> = ({ isOpen, onClose })
             )}
           </div>
           
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          { formAction === 'ADD'  ? <div className="flex justify-end gap-3 pt-4 border-t">
             <button
               type="button"
               onClick={handleClose}
@@ -194,7 +226,28 @@ export const AddTimerModal: React.FC<AddTimerModalProps> = ({ isOpen, onClose })
             >
               Add Timer
             </button>
+          </div> : 
+            <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className={`px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${
+                isTitleValid && isTimeValid
+                  ? 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-blue-400 cursor-not-allowed'
+              }`}
+              disabled={!isTitleValid || !isTimeValid}
+            >
+              Save Changes
+            </button>
           </div>
+          }
         </form>
       </div>
     </div>

@@ -2,8 +2,39 @@ import { configureStore, createSlice } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
 import { Timer } from '../types/timer';
 
-const initialState = {
-  timers: [] as Timer[],
+const loadState = () => {
+  try {
+    const storedData = localStorage.getItem('timersState');
+    if (storedData) {
+      return JSON.parse(storedData);
+    } else {
+      return undefined;
+    }
+  } catch (err) {
+    console.error(err);
+    return undefined;
+  }
+};
+const saveState = (state : any) => {
+  try {
+    const serializedState = JSON.stringify(state);
+    localStorage.setItem('timersState', serializedState);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const initialState = loadState() || {
+  // sample data added for testing purpose
+  timers: [{
+    createdAt: 1734803023530,
+    description: "demo",
+    duration: 10, 
+    id: "2037d704-43be-3432-a3a8-f23decd40d09", 
+    isRunning: false,
+    remainingTime: 10,
+    title: "test"
+  }] as Timer[],
 };
 
 const timerSlice = createSlice({
@@ -11,7 +42,6 @@ const timerSlice = createSlice({
   initialState,
   reducers: {
     addTimer: (state, action) => {
-      console.log('ADD TIMER ', action);
       state.timers.push({
         ...action.payload,
         id: crypto.randomUUID(),
@@ -19,12 +49,9 @@ const timerSlice = createSlice({
       });
     },
     deleteTimer: (state, action) => {
-      console.log('DELETE TIMER ', action);
-
       state.timers = state.timers.filter(timer => timer.id !== action.payload);
     },
     toggleTimer: (state, action) => {
-      console.log('TOGGLE TIMER ', action);
       const timer = state.timers.find(timer => timer.id === action.payload);
       if (timer) {
         timer.isRunning = !timer.isRunning;
@@ -70,6 +97,11 @@ const timerSlice = createSlice({
 const store = configureStore({
   reducer: timerSlice.reducer,
 });
+
+store.subscribe(() => {
+  const currentState = store.getState();
+  saveState(currentState); 
+})
 
 export { store };
 

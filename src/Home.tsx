@@ -1,15 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Clock } from 'lucide-react';
 import { TimerList } from './components/TimerList';
 import { AddTimerModal } from './components/AddTimerModal';
 import { Toaster } from 'sonner';
+import { AddEditTimerModal } from './components/AddEditTImerModal';
 
 function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deviceType , setDeviceType] = useState('web');
+
+
+  useEffect(() => {
+    const resizeWindow = () => {
+      setDeviceType(window.innerWidth <= 750 ? 'mobile' : 'web')
+    };
+    resizeWindow();
+    window.addEventListener('resize', resizeWindow);
+    return () => {
+      window.removeEventListener('resize', resizeWindow);
+    };
+  }, []);
+
+  console.log('local storgage')
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <Toaster position="top-right" />
+      <Toaster position={deviceType === 'web' ? "top-right" : "bottom-center"} />
       <div className="container mx-auto px-4 py-8">
         <div>
           <div className="flex items-center gap-3">
@@ -27,9 +44,10 @@ function Home() {
         
         <TimerList />
         
-        <AddTimerModal
+        <AddEditTimerModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
+          formAction='ADD'
         />
       </div>
     </div>
